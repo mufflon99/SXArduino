@@ -1,2 +1,0 @@
-Interface uses the FCC Syntax. 
-Arduino running with clock speed 18,432 mhz is needed! (To reach the Fixed Baud rate of 230400)
