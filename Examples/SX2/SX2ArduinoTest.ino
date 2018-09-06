@@ -12,7 +12,7 @@
 #include "Arduino.h"
 #define DEBUG
 // SX-bus interface
-SX2Arduino SX0;                 // Get access to the SX0-bus
+SX2Arduino SX;                 // Get access to the SX-bus
 
 // Generally, you should use "unsigned long" for variables that hold time
 // The value will quickly become too large for an int to store
@@ -22,12 +22,12 @@ unsigned long previousMillis = 0;        // will store last time LED was updated
 const long interval = 5000;           // interval at which to blink (milliseconds)
 unsigned int misec = 0;
 byte sxadr = 0;
-void sxisr(void)
+ISR (INT0_vect)
 {
   unsigned long currentmicros = micros();
   // if you want to understand this, see:
   // http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1239522239
-  SX0.isr();
+  SX.isr();
 
   misec=micros()-currentmicros;
 }
@@ -37,29 +37,36 @@ void setup()
   // put your setup code here, to run once:
   // Serial communication
   Serial.begin(230400);      // open the serial port
-
   // SX-bus communication
 #ifdef DEBUG
-  SX0.init(&Serial);
+  SX.init(&Serial);
 #endif
   // Rising on INT1 triggers the interrupt routine sxisr (see above)
-  attachInterrupt(0, sxisr, RISING);
+  #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__) // Arduino Mega
+    //attachInterrupt(digitalPinToInterrupt(21), sxisr, RISING);
+    EIMSK&=~(1<<INT0); //INTO off
+    EICRA|=(1<<ISC01) | (1<<ISC00); // INT0 on rising edge
+    EIMSK|=(1<<INT0);  //INT1 ON
+  #else
+    //attachInterrupt(0, sxisr, RISING);
+  #endif
+
   delay(500);
 }
 uint8_t getSXbusval(int adr) {
-  return SX0.get(adr);
+  return SX.get(adr);
 }
 
 uint8_t getSXbuspower() {
-  return SX0.getPWR();
+  return SX.getPWR();
 }
 
 void setSXbusval(uint8_t adr, uint8_t val) {
-  SX0.set(adr, val);
+  SX.set(adr, val);
 }
 
 void setSXbuspower(uint8_t onoff) {
-  SX0.setPWR(onoff);
+  SX.setPWR(onoff);
 }
 
 void loop()
@@ -70,23 +77,22 @@ void loop()
   static uint8_t fsttmp,dirtmp,lighttmp=0;
   if (currentMillis - previousMillis >= interval)
   {
-    frame = SX0.regLoco(130, 2);
+    frame = SX.regLoco(SX.calcSX2Par(130)<<2, 2);
     if (frame != 255)
     {
-      //SX0.setSX2Li(frame,1);
+      while (SX.isSX2Set(frame));
+      SX.setSX2Li(frame, true);
       Serial.println(F("****************************************************"));
       Serial.print (F("Lok is in Frame:"));
       Serial.println(frame);
-      SX0.set (10, 0);
-      SX0.set (100, 0xFF);
-      SX0.set (10|128, 0);
-      SX0.set (100|128, 0xFF);
-      while (SX0.isSX2Set(frame));
-      SX0.setSX2Li(frame, 1);
-      SX0.setSX2Speed(frame, 30, 0);
-      SX0.setSX2Fkt(frame, 0);
-      //while (SX0.isSX2Set(frame));
-      /*if ((SX0.regPOM(130,2,1,99,0xFF)!=255))
+      SX.set (10, 0);
+      SX.set (100, 0xFF);
+      SX.set (10|128, 0);
+      SX.set (100|128, 0xFF);
+      SX.setSX2Speed(frame, 30, 0);
+      SX.setSX2Fkt(frame, 0);
+      //while (SX.isSX2Set(frame));
+      /*if ((SX.regPOM(130,2,1,99,0xFF)!=255))
         {
         Serial.println(F("POM Succesfull!"));
         }
@@ -98,15 +104,15 @@ void loop()
     Serial.println(F(" Micro Sekunden"));
     for (int i = 0; i < 32; i++)
     {
-      if (SX0.checkSX2Frame(i))
+      if (SX.checkSX2Frame(i))
       {
 
         Serial.println(F("****************************************************"));
-        if (SX0.returnSX2Adr(i) != 0xFFFF)
+        if (SX.returnSX2Adr(i) != 0xFFFF)
         {
           Serial.print(F("Adresse:"));
-          Serial.print(SX0.returnSX2Adr(i));
-          switch (SX0.returnSX2Format(i))
+          Serial.print(SX.returnSX2Adr(i));
+          switch (SX.returnSX2Format(i))
           {
             case (2):
               Serial.print(F("-->Motorola"));
@@ -133,16 +139,16 @@ void loop()
           }//Ende Switch
           Serial.println(" ");
           Serial.print(F("Licht:"));
-          Serial.print(SX0.returnSX2Li(i));
+          Serial.print(SX.returnSX2Li(i));
           Serial.print(F(" Richtung:"));
-          Serial.print(SX0.returnSX2Dir(i));
+          Serial.print(SX.returnSX2Dir(i));
           Serial.print(F(" Speed:"));
-          Serial.print(SX0.returnSX2Fst(i)&127);
+          Serial.print(SX.returnSX2Fst(i)&127);
           Serial.print(F(" Funktion: "));
-          Serial.print(SX0.returnSX2Fkt(i), BIN);
+          Serial.print(SX.returnSX2Fkt(i), BIN);
           Serial.println(" ");
           Serial.print(F("PWR State SX Bus: "));
-          Serial.println(SX0.getPWR());
+          Serial.println(SX.getPWR());
           Serial.print(F("SX Frame: "));
           Serial.println(i);
         }
