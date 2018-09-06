@@ -1,8 +1,8 @@
 /*
  * SXArduino.h
  *
- * Changed on: 31.08.2018
- * Version: 5.0
+ * Changed on: 06.09.2018
+ * Version: 5.1
  * Changes: Now support reading SX BUS 0 and SX BUS 1
  * 
  * Version: 4.1 
@@ -122,96 +122,94 @@
 		#define SX0_T1_PINREG	PIND
 		#define SX0_T1_DDR		DDRD	
 	
-		#define SX0_D_HIGH		7                      // SX0 Data high write arduino port
-		#define SX0_D_HIGH_PORTPIN PORTD7 			   // SX0_D_HIGH
-		#define SX0_D_HIGH_PORT	PORTD
-		#define SX0_D_HIGH_DDR	DDRD
+		#define SX0_D_HIGH			7                      // SX0 Data high write arduino port
+		#define SX0_D_HIGH_PORTPIN 	PORTD7 			   // SX0_D_HIGH
+		#define SX0_D_HIGH_PORT	P	ORTD
+		#define SX0_D_HIGH_DDR		DDRD
 		
 		#define SX0_D_LOW		3                     // SX0 Data low write arduino port
-		#define SX0_D_LOW_PORTPIN PORTD3			       // SX0_D_LOW
-		#define SX0_D_LOW_PORT	PORTD
+		#define SX0_D_LOW_PORTPIN 	PORTD3			       // SX0_D_LOW
+		#define SX0_D_LOW_PORT		PORTD
 		#define SX0_D_LOW_PINREG	PORTD
-		#define SX0_D_LOW_DDR	DDRD
+		#define SX0_D_LOW_DDR		DDRD
 		
 		#ifdef _sxbus1
-			#define SX1_T1			8                  		// SX1 Data read arduino port
-			#define SX1_T1_PORTPIN 	PINB0                  // SX1_T1
-			#define SX1_T1_PINREG	PINB
-			#define SX1_T1_DDR		DDRB	
+			#define SX1_T1				8                  		// SX1 Data read arduino port
+			#define SX1_T1_PORTPIN 		PINB0                  // SX1_T1
+			#define SX1_T1_PINREG		PINB
+			#define SX1_T1_DDR			DDRB	
 		
-			#define SX1_D_HIGH		10                     // SX1 Data high write arduino port
-			#define SX1_D_HIGH_PORTPIN PORTB2 			   // SX1_D_HIGH
-			#define SX1_D_HIGH_PORT	PORTB
-			#define SX1_D_HIGH_DDR	DDRB
+			#define SX1_D_HIGH			10                     // SX1 Data high write arduino port
+			#define SX1_D_HIGH_PORTPIN 	PORTB2 			   // SX1_D_HIGH
+			#define SX1_D_HIGH_PORT		PORTB
+			#define SX1_D_HIGH_DDR		DDRB
 		
-			#define SX1_D_LOW		9                    // SX1 Data low write arduino port
-			#define SX1_D_LOW_PORTPIN PORTB1			  // SX1_D_LOW
-			#define SX1_D_LOW_PORT	PORTB
-			#define SX1_D_LOW_PINREG	PORTB
-			#define SX1_D_LOW_DDR	DDRB
+			#define SX1_D_LOW			9                    // SX1 Data low write arduino port
+			#define SX1_D_LOW_PORTPIN 	PORTB1			  // SX1_D_LOW
+			#define SX1_D_LOW_PORT		PORTB
+			#define SX1_D_LOW_DDR		DDRB
 		#endif
 		
 	#endif                                         // _use4pin
 #elif defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__) // Arduino Mega
-#define SX_T0			2                    // Clock
-	#define SX_T0_PORTPIN 	PIND2 				 // SX_T0
+	#define SX_T0			21                    // Clock
+	#define SX_T0_PORTPIN 	PIND0 				 // SX_T0
 	#define SX_T0_PINREG	PIND
 	#define SX_T0_DDR		DDRD
 	#ifndef _use4pin
-		#define SX0_T1			4                    	//SX0 Data read arduino port
-		#define SX0_T1_PORTPIN 	PIND4                  // SX0_T1
-		#define SX0_T1_PINREG	PIND
-		#define SX0_T1_DDR		DDRD
+		#define SX0_T1			30                    	//SX0 Data read arduino port
+		#define SX0_T1_PORTPIN 	PINC7                  // SX0_T1
+		#define SX0_T1_PINREG	PINC
+		#define SX0_T1_DDR		DDRC	
 
-		#define SX0_D			7                     //SX0 Data write arduino port
-		#define SX0_D_PORTPIN	PORTD7			       // SX0_D
-		#define SX0_D_PORT		PORTD
-		#define SX0_D_DDR		DDRD
+		#define SX0_D			32                     //SX0 Data write arduino port
+		#define SX0_D_PORTPIN	PORTC5			       // SX0_D
+		#define SX0_D_PORT		PORTC
+		#define SX0_D_DDR		DDRC
 
 		#ifdef _sxbus1
-			#define SX1_T1			8                    	//SX1 Data read arduino port
-			#define SX1_T1_PORTPIN 	PINB0                  // SX1_T1
-			#define SX1_T1_PINREG	PINB
-			#define SX1_T1_DDR		DDRB
+			#define SX1_T1			31                  		// SX1 Data read arduino port
+			#define SX1_T1_PORTPIN 	PINC6                  // SX1_T1
+			#define SX1_T1_PINREG	PINC
+			#define SX1_T1_DDR		DDRC
 
-			#define SX1_D			10                     //SX1 Data write arduino port
-			#define SX1_D_PORTPIN	PORTB2			       // SX1_D
-			#define SX1_D_PORT		PORTB
-			#define SX1_D_DDR		DDRB
+			#define SX1_D			33                     //SX1 Data write arduino port
+			#define SX1_D_PORTPIN	PORTC4			       // SX1_D
+			#define SX1_D_PORT		PORTC
+			#define SX1_D_DDR		DDRC
 		#endif
 	#else
-		#define SX0_T1			4                    	//SX0 Data read arduino port
-		#define SX0_T1_PORTPIN 	PIND4                  // SX0_T1
-		#define SX0_T1_PINREG	PIND
-		#define SX0_T1_DDR		DDRD	
+		#define SX0_T1			30                    	//SX0 Data read arduino port
+		#define SX0_T1_PORTPIN 	PINC7                  // SX0_T1
+		#define SX0_T1_PINREG	PINC
+		#define SX0_T1_DDR		DDRC	
 	
-		#define SX0_D_HIGH		7                      // SX0 Data high write arduino port
-		#define SX0_D_HIGH_PORTPIN PORTD7 			   // SX0_D_HIGH
-		#define SX0_D_HIGH_PORT	PORTD
-		#define SX0_D_HIGH_DDR	DDRD
+		#define SX0_D_LOW			32                     // SX0 Data low write arduino port
+		#define SX0_D_LOW_PORTPIN 	PORTC5			       // SX0_D_LOW
+		#define SX0_D_LOW_PORT		PORTC
+		#define SX0_D_LOW_DDR		DDRC
 		
-		#define SX0_D_LOW		3                     // SX0 Data low write arduino port
-		#define SX0_D_LOW_PORTPIN PORTD3			       // SX0_D_LOW
-		#define SX0_D_LOW_PORT	PORTD
-		#define SX0_D_LOW_PINREG	PORTD
-		#define SX0_D_LOW_DDR	DDRD
+		#define SX0_D_HIGH			34                      // SX0 Data high write arduino port
+		#define SX0_D_HIGH_PORTPIN 	PORTC3 			   // SX0_D_HIGH
+		#define SX0_D_HIGH_PORT		PORTC
+		#define SX0_D_HIGH_DDR		DDRC
 		
-		#ifdef _sxbus1
-			#define SX1_T1			8                  		// SX1 Data read arduino port
-			#define SX1_T1_PORTPIN 	PINB0                  // SX1_T1
-			#define SX1_T1_PINREG	PINB
-			#define SX1_T1_DDR		DDRB	
-		
-			#define SX1_D_HIGH		10                     // SX1 Data high write arduino port
-			#define SX1_D_HIGH_PORTPIN PORTB2 			   // SX1_D_HIGH
-			#define SX1_D_HIGH_PORT	PORTB
-			#define SX1_D_HIGH_DDR	DDRB
-		
-			#define SX1_D_LOW		9                    // SX1 Data low write arduino port
-			#define SX1_D_LOW_PORTPIN PORTB1			  // SX1_D_LOW
-			#define SX1_D_LOW_PORT	PORTB
-			#define SX1_D_LOW_PINREG	PORTB
-			#define SX1_D_LOW_DDR	DDRB
+		#ifdef _sxbus1	
+			#define SX1_T1			31                  		// SX1 Data read arduino port
+			#define SX1_T1_PORTPIN 	PINC6                  // SX1_T1
+			#define SX1_T1_PINREG	PINC
+			#define SX1_T1_DDR		DDRC	
+			
+			#define SX1_D_LOW			33                   // SX1 Data low write arduino port
+			#define SX1_D_LOW_PORTPIN 	PORTC4			  // SX1_D_LOW
+			#define SX1_D_LOW_PORT		PORTC
+			#define SX1_D_LOW_PINREG	PORTC
+			#define SX1_D_LOW_DDR		DDRC
+				
+			#define SX1_D_HIGH			35                     // SX1 Data high write arduino port
+			#define SX1_D_HIGH_PORTPIN 	PORTC2 			   // SX1_D_HIGH
+			#define SX1_D_HIGH_PORT		PORTC
+			#define SX1_D_HIGH_DDR	D	DRC
 		#endif
 		
 	#endif                                        // _use4pin
@@ -300,11 +298,12 @@ public:
 	uint8_t returnSX2Dir(uint8_t);
 	uint16_t returnSX2Fkt(uint8_t);
 	uint8_t regLoco (uint16_t , uint8_t );
+	uint8_t regLoco (uint16_t , uint8_t ,HardwareSerial* hwPrint);
 	uint8_t checkLoco(uint16_t,uint8_t);
 	uint8_t holdLoco (uint8_t,uint8_t);
-	uint8_t regPOM(uint16_t,uint8_t,  uint8_t , uint8_t , uint8_t);
-	uint16_t calcAdr(uint16_t);
-	uint16_t calcPar(uint16_t); 		
+	uint8_t regPOM(uint8_t,uint8_t,uint8_t,  uint8_t , uint8_t , uint8_t);
+	uint16_t calcSX2Adr(uint16_t);
+	uint16_t calcSX2Par(uint16_t); 		
 
 private:
 	void initVar();
