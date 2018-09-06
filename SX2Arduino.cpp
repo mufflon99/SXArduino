@@ -1,8 +1,8 @@
 /*
  * SX2Aduino.cpp
  *
- * Changed on: 31.08.2018
- * Version: 5.0
+ * Changed on: 06.09.2018
+ * Version: 5.1
  * Changes: Now support reading SX BUS 0 and SX BUS 1 
  *
  * Changed on: 22.08.2018
@@ -228,6 +228,7 @@ SX2Arduino::SX2Arduino()
 {
 
 	printer=NULL;					//No Serial.Print for default
+	pinMode(SX_T0, INPUT);           // SX-T0 is an input, no pull up
 	if(sxbusindex<2)					//Check if Max Busindex is reached
 		_sx_busNr=sxbusindex++;
 	else
@@ -255,22 +256,22 @@ uint8_t SX2Arduino::init()
 		}
 		pinMode(SX0_T1, INPUT);           // SX-T1 is also an input, no pull up to simulate tri-state
 		#ifndef _use4pin
-		pinMode(SX0_D, INPUT);       // SX-D is also an input when not writing to allow other devices to write
+			pinMode(SX0_D, INPUT);       // SX-D is also an input when not writing to allow other devices to write
 		#else
-		bitWrite(SX0_D_LOW_PORT, SX0_D_LOW_PORTPIN, HIGH);            // Switch off (TRI_STATE)
-		bitWrite(SX0_D_HIGH_PORT, SX0_D_HIGH_PORTPIN, HIGH);
-		pinMode(SX0_D_LOW, OUTPUT);       // SX-LOW_D is output but set high to stop wrting low
-		pinMode(SX0_D_HIGH, OUTPUT);      // SX-HIGH-D is output but set high to stop wrting high
+			pinMode(SX0_D_LOW, OUTPUT);       // SX-LOW_D is output but set high to stop wrting low
+			pinMode(SX0_D_HIGH, OUTPUT);      // SX-HIGH-D is output but set high to stop wrting high
+			bitWrite(SX0_D_LOW_PORT, SX0_D_LOW_PORTPIN, HIGH);            // Switch off (TRI_STATE)
+			bitWrite(SX0_D_HIGH_PORT, SX0_D_HIGH_PORTPIN, HIGH);
 		#endif // _use4pin
 		#ifdef _sxbus1
 			pinMode(SX1_T1, INPUT);           // SX-T1 is also an input, no pull up to simulate tri-state
 			#ifndef _use4pin
-			pinMode(SX1_D, INPUT);       // SX-D is also an input when not writing to allow other devices to write
+				pinMode(SX1_D, INPUT);       // SX-D is also an input when not writing to allow other devices to write
 			#else
-			bitWrite(SX1_D_LOW_PORT, SX1_D_LOW_PORTPIN, HIGH);            // Switch off (TRI_STATE)
-			bitWrite(SX1_D_HIGH_PORT, SX1_D_HIGH_PORTPIN, HIGH);
-			pinMode(SX1_D_LOW, OUTPUT);       // SX-LOW_D is output but set high to stop wrting low
-			pinMode(SX1_D_HIGH, OUTPUT);      // SX-HIGH-D is output but set high to stop wrting high
+				pinMode(SX1_D_LOW, OUTPUT);       // SX-LOW_D is output but set high to stop wrting low
+				pinMode(SX1_D_HIGH, OUTPUT);      // SX-HIGH-D is output but set high to stop wrting high
+				bitWrite(SX1_D_LOW_PORT, SX1_D_LOW_PORTPIN, HIGH);            // Switch off (TRI_STATE)
+				bitWrite(SX1_D_HIGH_PORT, SX1_D_HIGH_PORTPIN, HIGH);
 			#endif // _use4pin
 		#endif // _sxbus1
 		initVar();
@@ -1097,7 +1098,7 @@ void SX2Arduino::isr()
 	}  //end switch/case _sx_state
 }
 // Convert Adress to SX2 Adr Par Stored in Array
-uint16_t SX2Arduino::calcPar(uint16_t adr) 				
+uint16_t SX2Arduino::calcSX2Par(uint16_t adr) 				
 {
 
 	uint8_t par01,par02;
@@ -1114,7 +1115,7 @@ uint16_t SX2Arduino::calcPar(uint16_t adr)
 	return data;                                  
 }
 // Convert Stored SX2 Adress Par to Real SX2 Adress
-uint16_t SX2Arduino::calcAdr(uint16_t adr) 				
+uint16_t SX2Arduino::calcSX2Adr(uint16_t adr) 				
 {
 
 	uint8_t par01,par02;
@@ -1241,10 +1242,10 @@ uint8_t SX2Arduino::isSX2Set(uint8_t frame)
 // Write Praämbel to the SX2 Frame to send, writing to the SX-bus is done by the isr.
 uint8_t SX2Arduino::setSX2Pr(uint8_t frame, uint8_t dt) 
 {
-	if (isSX2Set(frame)==1)		//Check if writing SX2 is currently active, or SX2 not in SYNC!
-	{
-		return 2;	
-	}
+	//if (isSX2Set(frame)==1)		//Check if writing SX2 is currently active, or SX2 not in SYNC!
+	//{
+		//return 2;	
+	//}
 	if (dt < 16 && frame < SX2_FRAMES)  			// Check if invalid address or frame.
 	{
 		_sx2bus[frame].pr &=~15; 				//Clear the first 4 Bits
@@ -1257,10 +1258,10 @@ uint8_t SX2Arduino::setSX2Pr(uint8_t frame, uint8_t dt)
 // Write Adr to the SX2 Frame to send, writing to the SX-bus is done by the isr.
 uint8_t SX2Arduino::setSX2Adr(uint8_t frame, uint16_t adr,uint8_t format) 
 {
-	if ((isSX2Set(frame)==2) || (isSX2Set(frame)==1))		//Check if writing SX2 is currently active, or SX2 not in SYNC!
-	{
-		return 2;					
-	}
+	//if ((isSX2Set(frame)==2) || (isSX2Set(frame)==1))		//Check if writing SX2 is currently active, or SX2 not in SYNC!
+	//{
+		//return 2;					
+	//}
 	if ((frame < SX2_FRAMES) && (format<16))  		// Check if invalid address or frame.
 	{
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) 
@@ -1286,10 +1287,10 @@ uint8_t SX2Arduino::setSX2Adr(uint8_t frame, uint16_t adr,uint8_t format)
 // Write Light to the SX2 Frame to send, writing to the SX-bus is done by the isr.
 uint8_t SX2Arduino::setSX2Li(uint8_t frame, bool dt) 
 {
-	if ((_sx2bus[frame].pr&~240)==0)							//Frame not active!
-	{
-		return 0xFF;
-	}
+	//if ((_sx2bus[frame].pr&~240)==0)							//Frame not active!
+	//{
+		//return 0xFF;
+	//}
 	if ((dt < 2) && (frame < SX2_FRAMES)) 		// Check if invalid address or frame.
 	{
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) 
@@ -1355,10 +1356,10 @@ uint8_t SX2Arduino::setSX2Speed(uint8_t frame, uint8_t speed, bool dir)
 		printer->println(_sx2bussnd[frame].pr,BIN);
 		#endif
 		*/
-	if ((_sx2bus[frame].pr&~240)==0)							//Frame not active!
-	{
-		return 0xFF;
-	}
+	//if ((_sx2bus[frame].pr&~240)==0)							//Frame not active!
+	//{
+		//return 0xFF;
+	//}
 	if ((speed < 128) && (frame < SX2_FRAMES) && (dir < 2))  	// Check if invalid address or frame.
 	{
 		_sx2bus[frame].fst  =	0;					//Clear all BITS
@@ -1379,10 +1380,10 @@ uint8_t SX2Arduino::setSX2Speed(uint8_t frame, uint8_t speed, bool dir)
 // Write Fuction to the SX2 Frame to send, writing to the SX-bus is done by the isr.
 uint8_t SX2Arduino::setSX2Fkt(uint8_t frame, uint16_t dt) 
 {
-	if ((_sx2bus[frame].pr&~240)==0)							//Frame not active!
-	{
-		return 0xFF;
-	}
+	//if ((_sx2bus[frame].pr&~240)==0)							//Frame not active!
+	//{
+		//return 0xFF;
+	//}
 	if (frame < SX2_FRAMES)  		// Check if invalid frame.
 	{
 
@@ -1501,8 +1502,8 @@ uint16_t SX2Arduino::returnSX2Adr(uint8_t frame)
 {
 if ((_sx2bus[frame].pr&~240)!=0 && frame<SX2_FRAMES) 						//Check if Frame is used
   {	
-	if (bitRead (_sx2bus[frame].pr,1))  		//Bit1 in Präambel gestetzt == SX2 Adresse
-		return (calcAdr((_sx2bus[frame].adr&0xFFFC)>>2));	//return  Adress stored in Frame, Convert in normal Adress Format first
+	if (bitRead (_sx2bus[frame ].pr,1))  		//Bit1 in Präambel gestetzt == SX2 Adresse
+		return (calcSX2Adr((_sx2bus[frame].adr&0xFFFC)>>2));	//return  Adress stored in Frame, Convert in normal Adress Format first
 	else if (bitRead(_sx2bus[frame].pr,3))		//Bit 3 Set == DCC
 		return (((_sx2bus[frame].adr&0xFFFC)>>2));			//return  Adress stored in Frame,no convertion needed
   }
@@ -1561,21 +1562,10 @@ uint8_t SX2Arduino::regLoco (uint16_t adr, uint8_t format)
 	unsigned long startMillis = millis();							
 	uint8_t state=0;
 	uint8_t frame=checkLoco (adr, format);
+	adr=adr&0xFFFC;
 	if (format>15)
 	{
 		return (0xFF);	
-	}
-	if (bitRead (format,1))							//If SX2 adress, change to par format
-	{
-		//if (highByte(adr)>99)
-			//return (0xFF);
-		//if (lowByte(adr)>99)
-			//return (0xFF);
-		;
-	}
-	else if (adr>>2 > 9999)		//Check given values
-	{
-		return 0xFF;								//return fault
 	}
 	if (frame<SX2_FRAMES)							//Loco already registred
 	{
@@ -1662,9 +1652,9 @@ uint8_t SX2Arduino::regLoco (uint16_t adr, uint8_t format)
 				case (4):
 					if (((_sx2bus[frame].adr&0xFFFC)) == adr) //Loco Registred, set default values
 					{
-						setSX2Li(frame,0);
-						setSX2Speed(frame,0,0);
-						setSX2Fkt(frame,0);
+						//setSX2Li(frame,0);
+						//setSX2Speed(frame,0,0);
+						//setSX2Fkt(frame,0);
 						#ifdef DEBUG
 						if (printer!=NULL)
 						{
@@ -1715,24 +1705,161 @@ uint8_t SX2Arduino::regLoco (uint16_t adr, uint8_t format)
 		}
 	return (0xFF);
 }
-// Function to Check SX2BUS if loco already registred
-uint8_t SX2Arduino::checkLoco (uint16_t adr,uint8_t format)
+// Function to Register new loco on SX Bus, with serial return
+uint8_t SX2Arduino::regLoco (uint16_t adr, uint8_t format,HardwareSerial* hwPrint)
 {
+	unsigned long startMillis = millis();							
+	uint8_t state=0;
+	uint8_t frame=checkLoco (adr, format);
+	adr=adr&0xFFFC;
 	if (format>15)
 	{
 		return (0xFF);	
 	}
-	if (bitRead (format,1))							//If SX2 adress, change to par format
+	if (frame<SX2_FRAMES)							//Loco already registred
 	{
-		//if (highByte(adr)>99)
-			//return (0xFF);
-		//if (lowByte(adr)>99)
-			//return (0xFF);
-		;
+		hwPrint->write(frame);
+		return frame;
 	}
-	else if (adr > 9999)		//Check given values
+	else if (frame==0xFF)							//Loco was never registred, seach empty frame
 	{
-		//return 0xFF;								//return fault
+		frame=searchSX2EmptyFrame ();				//Search new empty frame
+		if (frame==255)								//No empty frame found
+		{
+			return (0xFF);
+		}
+	}
+	else if (bitRead(frame,6))
+	{
+		bitClear(frame,6);
+		#ifdef DEBUG
+		if (printer!=NULL)
+		{
+			printer->print(F("Loco Registred before, new "));
+		}
+		#endif
+	}
+	while (1)											//Loop to register adress
+		{
+			switch (state)
+			{
+				case (0):
+					#ifdef DEBUG
+					if (printer!=NULL)
+					{
+						printer->print(F("Register SX2 Loco--->frame:"));
+						printer->println(frame);
+						printer->print(F(" Adr:"));
+						printer->println(adr,BIN);
+					}
+					#endif
+					if (setSX2Adr(frame,adr,format)==0)//Set the Adress and Präambel on empty frame
+						{
+						state=1;							//Switch to next state
+						}
+					break;
+				case (1):
+					#ifdef DEBUG
+					if (printer!=NULL)
+					{
+						printer->print(F("Wait till Präambel is set, ms:"));
+						printer->println((millis()-startMillis));
+					}
+					#endif	
+					if (isSX2Set(frame)==0)				//Wait till SX2 Adress is set
+						{
+						state=2;
+						hwPrint->write(frame);
+						}
+					break;
+				case (2):
+					#ifdef DEBUG
+					if (printer!=NULL)
+					{
+						printer->print(F("Wait till Präambel is new read, ms:"));
+						printer->println((millis()-startMillis));
+					}
+					#endif
+					ATOMIC_BLOCK(ATOMIC_RESTORESTATE) 
+					{
+						_sx2bus[frame].adr = 0;					//Reset recived adress to zero
+					}
+					state=3;
+					break;
+				case (3):
+					
+					#ifdef DEBUG
+					if (printer!=NULL)
+					{
+						printer->print(F("Wait till Adress is new read, ms:"));
+						printer->println((millis()-startMillis));
+					}
+					#endif	
+					if (!(_sx2bus[frame].adr == 0))					//Wait till Adress is new read from bus
+					{
+						state=4;
+					}
+					break;
+				case (4):
+					if (((_sx2bus[frame].adr&0xFFFC)) == adr) //Loco Registred, set default values
+					{
+						#ifdef DEBUG
+						if (printer!=NULL)
+						{
+							printer->print(F("Loco Registred,ms:"));
+							printer->println((millis()-startMillis));
+						}
+						#endif
+						return (frame);										//return registred frame	
+					}
+					else 
+					{
+						#ifdef DEBUG
+						if (printer!=NULL)
+						{
+							printer->println(F("New Try to register Loco-->"));
+						}
+						#endif
+						state=0;
+						//frame=searchSX2EmptyFrame ();					//Search new empty frame
+						//if (frame==255)								//No empty frame found
+						//{
+							//return (0xFF);
+						//}						
+						//setSX2Adr(frame,adr,format);				//Set the Adress and Präambel on empty frame	
+					}						
+					break;
+				default:
+					break;
+			}	//end switch state
+			if ((millis()-startMillis)>=1000)							//End loco registration after 1000 ms		
+			{
+				#ifdef DEBUG
+				if (printer!=NULL)
+				{
+					printer->println(F("Register LOCO failed"));
+				}
+				#endif 
+				bitClear (_sx2bus[frame].pr,SX2WRITEPR);		//Set no writing
+				bitClear (_sx2bus[frame].pr,SX2WRITEADR);	//Set no writing
+				ATOMIC_BLOCK(ATOMIC_RESTORESTATE) 
+				{
+					_sx2bus[frame].pr &= ~15;				//Reset Präambel on recive frames
+					_sx2bus[frame].adr = 0;				//Reset Adr on recive frames
+				}
+				return 0xFF;							//return fault, registration takes to long
+			}
+			
+		}
+	return (0xFF);
+}
+// Function to Check SX2BUS if loco already registred
+uint8_t SX2Arduino::checkLoco (uint16_t adr,uint8_t format)
+{
+	adr=adr&0xFFFC;
+	if (format>15)
+	{
+		return (0xFF);	
 	}
 	for (uint8_t i=0;i<SX2_FRAMES;i++)
 	{
@@ -1779,22 +1906,38 @@ uint8_t SX2Arduino::holdLoco (uint8_t frame,uint8_t format)
 return 0xFF;   
 }
 // Set SX2 POM
-uint8_t SX2Arduino::regPOM( uint16_t adr, uint8_t format, uint8_t par100, uint8_t par1, uint8_t dat) 
+uint8_t SX2Arduino::regPOM( uint8_t adr_high,uint8_t adr_low, uint8_t format, uint8_t par100, uint8_t par1, uint8_t dat) 
 {
 	unsigned long startMillis = millis();
-	uint16_t convadr=adr;									//to store adress
 	uint8_t tmpformat=format;
 	uint8_t tmpfst = 0;
 	uint16_t tmpfkt = 0;
 	uint8_t state = 0;
 	uint8_t frame=0;
+	uint16_t adr=0;
+	for (uint8_t i=0;i<7;i++)
+	{
+		if (bitRead(adr_low,i))	
+		{
+			bitSet(adr,i+2);	
+		}
+		else
+		{
+			bitClear(adr,i+2);	
+		}
+		if (bitRead(adr_high,i))	
+		{
+			bitSet(adr,i+9);	
+		}
+		else
+		{
+			bitClear(adr,i+9);	
+		}
+	}
+	//uint16_t adr= (((adr_high&~128) << 10 ) | (adr_low&~128)<<2);   //Generate Adress
 	bitSet(tmpformat,0);								//Set PROG bit
 	frame=checkLoco (adr, tmpformat);
-	if (bitRead (tmpformat,1))							//If SX2 adress, change to par format
-	{
-		convadr = calcPar(convadr);					//Convert Adress in SX2 par Format
-	}
-	if (tmpformat > 15 || adr > 9999|| par100>15 || par1>99)		//Check given values
+	if (tmpformat > 15 || par100>15 || par1>99)		//Check given values
 	{
 		return 0xFF;								//return fault
 	}
@@ -1806,15 +1949,10 @@ uint8_t SX2Arduino::regPOM( uint16_t adr, uint8_t format, uint8_t par100, uint8_
 			return (0xFF);
 		}
 	}
-	else if (frame<16)									//Loco already registred
+	else if (frame<SX2_FRAMES)									//Loco already registred
 	{
 		return frame;
 	}
-	if (isSX2Set(frame)!= 0 ) 									//Check if writing SX2 is currently active,
-	{
-		return 0xFF;					
-	}
-	
 	par100&=15;																											//Only first four bits used
 	par1&=127;																											//Only first seven bits used
 	for (uint8_t i=0;i<4;i++)
@@ -1848,15 +1986,18 @@ uint8_t SX2Arduino::regPOM( uint16_t adr, uint8_t format, uint8_t par100, uint8_
 					printer->print(F("Register SX2 Loco--->frame:"));
 					printer->print(frame);
 					printer->print(F(" Adr:"));
-					printer->println(convadr,BIN);
+					printer->println(adr,BIN);
 				}
 				#endif
 				ATOMIC_BLOCK(ATOMIC_RESTORESTATE) 
 				{
 					_sx2bus[frame].pr &=~15; 				//Clear the first 4 Bits
 					_sx2bus[frame].pr |= (tmpformat&15);		//Load new first 4 Bits
-					_sx2bus[frame].adr &=~ 0xFFFF;			//Clear all BITS
-					_sx2bus[frame].adr |= convadr<<2;		//Load new adress from BIT 15 to BIT2 (BIT1 for Light BIT 0 for DCC FST)
+					_sx2bus[frame].adr = adr;		//Load new adress from BIT 15 to BIT2 (BIT1 for Light BIT 0 for DCC FST)
+					_sx2bus[frame].fst = tmpfst;				//Load fst values to send
+					_sx2bus[frame].fkt = tmpfkt;				//Load Function values to send
+					bitSet(_sx2bus[frame].pr,SX2WRITEFST);	//Set Write Flag Fst
+					bitSet(_sx2bus[frame].pr,SX2WRITEFKT);	//Set Write Flag Fkt
 					bitSet(_sx2bus[frame].pr,SX2WRITEPR);	//Set Write Flag Präambel
 					bitSet(_sx2bus[frame].pr,SX2WRITEADR);	//Set Write Flag Adr
 				}
@@ -1903,7 +2044,7 @@ uint8_t SX2Arduino::regPOM( uint16_t adr, uint8_t format, uint8_t par100, uint8_
 				}
 				break;
 			case (4):
-				if (((_sx2bus[frame].adr&0xFFFC)>>2) == convadr) //POM Registred, 
+				if ((_sx2bus[frame].adr) == adr) //POM Registred, 
 				{
 					ATOMIC_BLOCK(ATOMIC_RESTORESTATE) 
 					{
@@ -1930,29 +2071,19 @@ uint8_t SX2Arduino::regPOM( uint16_t adr, uint8_t format, uint8_t par100, uint8_
 					}
 					#endif
 					state=0;
+					/*
 					frame=searchSX2EmptyFrame ();					//Search new empty frame
 					if (frame==255)								//No empty frame found
 					{
 					return (0xFF);
 					}
-					ATOMIC_BLOCK(ATOMIC_RESTORESTATE) 
-					{					
-						_sx2bus[frame].pr &=~15; 				//Clear the first 4 Bits
-						_sx2bus[frame].pr |= (tmpformat&15);			//Load new first 4 Bits
-						_sx2bus[frame].adr &=~ 0xFFFF;			//Clear all BITS
-						_sx2bus[frame].adr |= convadr<<2;		//Load new adress from BIT 15 to BIT2 (BIT1 for Light BIT 0 for DCC FST)
-						_sx2bus[frame].fst = tmpfst;				//Load fst values to send
-						_sx2bus[frame].fkt = tmpfkt;				//Load Function values to send
-						bitSet(_sx2bus[frame].pr,SX2WRITEPR);	//Set Write Flag Präambel
-						bitSet(_sx2bus[frame].pr,SX2WRITEADR);	//Set Write Flag Adr
-					}
-
+					*/
 				}						
 				break;
 			default:
 				break;
 		}	//end switch state
-		if ((millis()-startMillis)>=500)							//End loco registration after 2000 ms		
+		if ((millis()-startMillis)>=100)							//End loco registration after 2000 ms		
 		{
 			#ifdef DEBUG
 			if (printer!=NULL)
