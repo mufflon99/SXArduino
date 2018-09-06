@@ -1,5 +1,5 @@
 #include <SX2Arduino.h>
-#include <avr/io.h> 
+#include <avr/io.h>
 #define BAUD 230400
 #include <util/setbaud.h>
 #include "Arduino.h"
@@ -8,6 +8,7 @@
 
 #define SX2LOCOS      32
 
+#define RX_BUFFSIZE 5
 #define BUFFSXCHAN 0
 #define BUFFSXVAL 1
 
@@ -16,33 +17,45 @@
 #define BUFFSX2FST 2
 #define BUFFSX2FORMAT 3
 // SX-bus interface
-SX2Arduino SXbus;                 // Get access to the SX-bus
+SX2Arduino SX;                 // Get access to the SX-bus
 
 byte cmdRcvd;                     //To store Serial Command Recived
-byte rxBuffer[5];                 //to store serial data recived after command
-uint8_t sx2loco[SX2LOCOS];     //to store active locos with format
-uint8_t zeformat;                //to store the current ze format
-void sxisr(void)
+byte rxBuffer[RX_BUFFSIZE];                 //to store serial data recived after command
+byte sx2loco[SX2LOCOS];     //to store active locos with format
+byte zeformat;                //to store the current ze format
+bool noserial = true;
+ISR (INT0_vect)
 {
-  SXbus.isr();
+  SX.isr();
 }
 void setup()
 {
-  for (uint8_t i = 0; i < SX2LOCOS; i++)
+  for (byte i = 0; i < SX2LOCOS; i++)
   {
-
     sx2loco[i] = 0;
   }
+  for (byte i = 0; i < RX_BUFFSIZE; i++)
+  {
+    rxBuffer[i] = 0xFF;
+  }
+  SX.init();
+#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__) // Arduino Mega
+  //attachInterrupt(digitalPinToInterrupt(21), sxisr, RISING);
+  EIMSK &= ~(1 << INT0); //INTO off
+  EICRA |= (1 << ISC01) | (1 << ISC00); // INT0 on rising edge
+  EIMSK |= (1 << INT0); //INT1 ON
+#else
+  //attachInterrupt(0, sxisr, RISING);
+#endif
+  //delay(500);
   Serial.begin(230400);      // open the serial port
-  SXbus.init();
-  attachInterrupt(0, sxisr, RISING);
-  delay(500);
+  //delay(500);
 
 }
 void serialEvent()
 {
   // Read all the data
-  uint8_t databytes;                //to defines datbytes to read vom buffer
+  uint8_t databytes = 0;              //to defines datbytes to read vom buffer
   uint8_t serialreturn = 0xFF;           //to store date to return to pc
   uint16_t sx2fkt, sx2adress, sx2format = 0;
   while (Serial.available())
@@ -70,17 +83,28 @@ void serialEvent()
       case (0x7B):
         databytes = 5;
         break;
+      case (0x81):
+        databytes = 0;
+        break;
       case (0x83):
         databytes = 4;
         break;
       default:
         databytes = 0;
+        cmdRcvd = 0xFF;
         break;
     }
-    Serial.readBytes(rxBuffer, databytes);            //Read Data bytes into Buffer
+    if (cmdRcvd != 0xFF)
+    {
+      Serial.readBytes(rxBuffer, databytes);            //Read Data bytes into Buffer
+      delayMicroseconds(600);                           //Wait a bit for next command
+      if (Serial.available() != 0) //More recived then expected, reset serial!
+      {
+        cmdRcvd = 0xFF;
+      }
+    }
     break;
   } //End while
-
   switch (cmdRcvd)      //Decode command
   {
     case (0x00):
@@ -88,29 +112,29 @@ void serialEvent()
       {
         if (rxBuffer[BUFFSXVAL] == 0)
         {
-          SXbus.setPWR(0);
+          SX.setPWR(0);
         }
         else
         {
-          SXbus.setPWR(1);
+          SX.setPWR(1);
         }
         Serial.write(0x00);            //Return 0x00 to pc
         break;
       }
       else if (rxBuffer[BUFFSXCHAN] == 0x7F)   //Get Track power
       {
-        Serial.write( SXbus.getPWR());                      //Return Track Power to PC
+        Serial.write( SX.getPWR());                      //Return Track Power to PC
         break;
       }
       else if (bitRead(rxBuffer[BUFFSXCHAN], 7))                                      //Write SX Channel if BIT 7 is set
       {
         bitClear(rxBuffer[BUFFSXCHAN], 7);                                            //Clear Bit 7
-        Serial.write (SXbus.set(rxBuffer[BUFFSXCHAN], rxBuffer[BUFFSXVAL] ));         //Write on sx BUS
+        Serial.write (SX.set(rxBuffer[BUFFSXCHAN], rxBuffer[BUFFSXVAL] ));         //Write on sx BUS
         break;
       }
       else if (rxBuffer[BUFFSXCHAN] < 112)                          //Return SX Channel to PC
       {
-        Serial.write(SXbus.get(rxBuffer[BUFFSXCHAN]));
+        Serial.write(SX.get(rxBuffer[BUFFSXCHAN]));
         break;
       }
       break;
@@ -119,29 +143,29 @@ void serialEvent()
       {
         if (rxBuffer[BUFFSXVAL] == 0)
         {
-          SXbus.setPWR(0);
+          SX.setPWR(0);
         }
         else
         {
-          SXbus.setPWR(1);
+          SX.setPWR(1);
         }
         Serial.write(0x00);            //Return 0x00 to pc
         break;
       }
       else if (rxBuffer[BUFFSXCHAN] == 0x7F)   //Get Track power
       {
-        Serial.write( SXbus.getPWR());                      //Return Track Power to PC
+        Serial.write( SX.getPWR());                      //Return Track Power to PC
         break;
       }
       else if (bitRead(rxBuffer[BUFFSXCHAN], 7))                                      //Write SX Channel if BIT 7 is set
       {
         bitClear(rxBuffer[BUFFSXCHAN], 7);                                            //Clear Bit 7
-        Serial.write (SXbus.set(rxBuffer[BUFFSXCHAN] | 128, rxBuffer[BUFFSXVAL] ));   //Write on sx 1 BUS
+        Serial.write (SX.set(rxBuffer[BUFFSXCHAN] | 128, rxBuffer[BUFFSXVAL] ));   //Write on sx 1 BUS
         break;
       }
       else if (rxBuffer[BUFFSXCHAN] < 112)                          //Return SX Channel to PC
       {
-        Serial.write(SXbus.get(rxBuffer[BUFFSXCHAN] | 128));                         //Get sx 1 Bus
+        Serial.write(SX.get(rxBuffer[BUFFSXCHAN] | 128));                         //Get sx 1 Bus
         break;
       }
       break;
@@ -159,11 +183,11 @@ void serialEvent()
               {
                 //Serial.print("SX2 Adress:");
                 sx2format = 2;
-                serialreturn = SXbus.regLoco(sx2adress, sx2format);
-				if (serialreturn != 0xFF)
-				{
-				SXbus.setSX2Dccfst(serialreturn, false);             //Clear Bit
-				}
+                serialreturn = SX.regLoco(sx2adress, sx2format, &Serial);
+                if (serialreturn != 0xFF)
+                {
+                  SX.setSX2Dccfst(serialreturn, false);             //Clear Bit
+                }
               }
               else
               {
@@ -171,17 +195,17 @@ void serialEvent()
               }
               break;
             case (0x91):                                               //Loco with DCC short Address 14FS
-              if ((sx2adress>>2) > 127)
+              if ((sx2adress >> 2) > 127)
               {
                 serialreturn = 0xFF;//Return Fault
               }
               else if (zeformat == 4 || zeformat == 6 || zeformat == 11) //Check if Format is currently active on SX Bus
               {
                 sx2format = 8;
-                serialreturn = SXbus.regLoco(sx2adress, sx2format);
+                serialreturn = SX.regLoco(sx2adress, sx2format, &Serial);
                 if (serialreturn != 0xFF)
                 {
-                  SXbus.setSX2Dccfst(serialreturn, true);             //Set  Bit for F14DCC
+                  SX.setSX2Dccfst(serialreturn, true);             //Set  Bit for F14DCC
                 }
               }
               else
@@ -190,18 +214,18 @@ void serialEvent()
               }
               break;
             case (0x81):                                               //Loco with DCC short Address 28FS
-              if ((sx2adress>>2)  > 127)
+              if ((sx2adress >> 2)  > 127)
               {
                 serialreturn = 0xFF;//Return Fault
               }
               else if (zeformat == 4 || zeformat == 6 || zeformat == 11) //Check if Format is currently active on SX Bus
               {
                 sx2format = 8;
-                serialreturn = SXbus.regLoco(sx2adress, sx2format);
-								if (serialreturn != 0xFF)
-								{
-									SXbus.setSX2Dccfst(serialreturn, false);             //Clear Bit
-								}
+                serialreturn = SX.regLoco(sx2adress, sx2format, &Serial);
+                if (serialreturn != 0xFF)
+                {
+                  SX.setSX2Dccfst(serialreturn, false);             //Clear Bit
+                }
               }
               else
               {
@@ -209,18 +233,18 @@ void serialEvent()
               }
               break;
             case (0x05):                                 //Loco with DCC short Address 127FS
-              if ((sx2adress>>2)  > 127)
+              if ((sx2adress >> 2)  > 127)
               {
                 serialreturn = 0xFF;//Return Fault
               }
               else if (zeformat == 4 || zeformat == 6 || zeformat == 11) //Check if Format is currently active on SX Bus
               {
                 sx2format = 10;
-                serialreturn = SXbus.regLoco(sx2adress, sx2format);
-								if (serialreturn != 0xFF)
-								{
-									SXbus.setSX2Dccfst(serialreturn, false);             //Clear Bit
-								}
+                serialreturn = SX.regLoco(sx2adress, sx2format, &Serial);
+                if (serialreturn != 0xFF)
+                {
+                  SX.setSX2Dccfst(serialreturn, false);             //Clear Bit
+                }
               }
               else
               {
@@ -231,10 +255,10 @@ void serialEvent()
               if (zeformat == 4 || zeformat == 6 || zeformat == 11) //Check if Format is currently active on SX Bus
               {
                 sx2format = 12;
-                serialreturn = SXbus.regLoco(sx2adress, sx2format);
+                serialreturn = SX.regLoco(sx2adress, sx2format, &Serial);
                 if (serialreturn != 0xFF)
                 {
-                  SXbus.setSX2Dccfst(serialreturn, true);             //Set  Bit for F14DCC
+                  SX.setSX2Dccfst(serialreturn, true);             //Set  Bit for F14DCC
                 }
               }
               else
@@ -247,11 +271,11 @@ void serialEvent()
               if (zeformat == 4 || zeformat == 6 || zeformat == 11) //Check if Format is currently active on SX Bus
               {
                 sx2format = 12;
-                serialreturn = SXbus.regLoco(sx2adress, sx2format);
-								if (serialreturn != 0xFF)
-								{
-									SXbus.setSX2Dccfst(serialreturn, false);             //Clear Bit
-								}
+                serialreturn = SX.regLoco(sx2adress, sx2format, &Serial);
+                if (serialreturn != 0xFF)
+                {
+                  SX.setSX2Dccfst(serialreturn, false);             //Clear Bit
+                }
               }
               else
               {
@@ -262,11 +286,11 @@ void serialEvent()
               if (zeformat == 4 || zeformat == 6 || zeformat == 11) //Check if Format is currently active on SX Bus
               {
                 sx2format = 14;
-                serialreturn = SXbus.regLoco(sx2adress, sx2format);
-								if (serialreturn != 0xFF)
-								{
-									SXbus.setSX2Dccfst(serialreturn, false);             //Clear Bit
-								}
+                serialreturn = SX.regLoco(sx2adress, sx2format, &Serial);
+                if (serialreturn != 0xFF)
+                {
+                  SX.setSX2Dccfst(serialreturn, false);             //Clear Bit
+                }
               }
               else
               {
@@ -285,12 +309,19 @@ void serialEvent()
           else
           {
             sx2loco[serialreturn] = sx2format;
-            Serial.write(serialreturn);     //Return Frame number
+            //Serial.write(serialreturn);     //Return Frame number
             break;
           }
         case (0x02):                               //Unregister LOCO from Interface, not form BUS!!
           if ((rxBuffer[BUFFSX2INDEX] < SX2LOCOS) && (sx2loco[rxBuffer[BUFFSX2INDEX]] != 0)) //Check if this frame was already registred before
           {
+            if (bitRead(sx2loco[rxBuffer[BUFFSX2INDEX]],0)) //Unregister POM
+            {
+              SX.setSX2Li(rxBuffer[BUFFSX2INDEX], false);
+              SX.setSX2Dccfst(rxBuffer[BUFFSX2INDEX], false);
+              SX.setSX2Speed(rxBuffer[BUFFSX2INDEX], 0x00, 0);
+              SX.setSX2Fkt(rxBuffer[BUFFSX2INDEX], 0x0000);
+            }
             sx2loco[rxBuffer[BUFFSX2INDEX]] = 0;
             serialreturn = 0;
           }
@@ -303,14 +334,14 @@ void serialEvent()
         case (0x05):       //Change Light of registred loco
           if (rxBuffer[BUFFSX2INDEX] < SX2LOCOS && sx2loco[rxBuffer[BUFFSX2INDEX]] != 0)
           {
-            if (rxBuffer[2]==0x02)
-			{
-				serialreturn = SXbus.setSX2Li (rxBuffer[BUFFSX2INDEX], true); //Set Light
-			}
-			else
-			{
-				serialreturn = SXbus.setSX2Li (rxBuffer[BUFFSX2INDEX], false); //Set Light
-			}
+            if (rxBuffer[2] == 0x02)
+            {
+              serialreturn = SX.setSX2Li (rxBuffer[BUFFSX2INDEX], true); //Set Light
+            }
+            else
+            {
+              serialreturn = SX.setSX2Li (rxBuffer[BUFFSX2INDEX], false); //Set Light
+            }
           }
           else
           {
@@ -321,7 +352,7 @@ void serialEvent()
         case (0x13):       //Change speed and Direction of registred loco
           if (rxBuffer[BUFFSX2INDEX] < SX2LOCOS && sx2loco[rxBuffer[BUFFSX2INDEX]] != 0)
           {
-            serialreturn = SXbus.setSX2Speed (rxBuffer[BUFFSX2INDEX], (rxBuffer[2] & ~128), bitRead(rxBuffer[2], 7)); //Set direction and Speed
+            serialreturn = SX.setSX2Speed (rxBuffer[BUFFSX2INDEX], (rxBuffer[2] & ~128), bitRead(rxBuffer[2], 7)); //Set direction and Speed
           }
           else
           {
@@ -333,7 +364,7 @@ void serialEvent()
           sx2fkt = ((rxBuffer[3] << 8 ) | rxBuffer[2]);   //Generate Adress
           if (rxBuffer[BUFFSX2INDEX] < SX2LOCOS && sx2loco[rxBuffer[BUFFSX2INDEX]] != 0)
           {
-            serialreturn = SXbus.setSX2Fkt (rxBuffer[BUFFSX2INDEX], sx2fkt); //Set direction and Speed
+            serialreturn = SX.setSX2Fkt (rxBuffer[BUFFSX2INDEX], sx2fkt); //Set direction and Speed
           }
           else
           {
@@ -352,131 +383,136 @@ void serialEvent()
         case (0x03):
           for (uint8_t i = 0; i < 112; i++)       //Return complete SX0 BUS!
           {
-            Serial.write(SXbus.get(i));
+            Serial.write(SX.get(i));
           }
-          Serial.write(SXbus.getPWR());
+          Serial.write(SX.getPWR());
           for (uint8_t i = 0; i < 112; i++)       //Return complete SX1 BUS!
           {
-            Serial.write(SXbus.get(i | 128));
+            Serial.write(SX.get(i | 128));
           }
-          Serial.write(SXbus.getPWR());
+          Serial.write(SX.getPWR());
           break;
         case (0xC0):
           for (uint8_t i = 0; i < 16; i++)       //Return complete SX2 Bus additions Format SX Bus 0
           {
-            Serial.write (SXbus.returnSX2Format(i));
+            Serial.write (SX.returnSX2Format(i));
           }
           for (uint8_t i = 0; i < 16; i++)       //Return complete SX2 Bus additions Adress SX Bus 0
           {
-            Serial.write (highByte(SXbus.returnSX2AdrLiDcc(i)));
+            Serial.write (highByte(SX.returnSX2AdrLiDcc(i)));
           }
           for (uint8_t i = 0; i < 16; i++)       //Return complete SX2 Bus additions Adress SX Bus 0
           {
-            Serial.write (lowByte(SXbus.returnSX2AdrLiDcc(i)));
+            Serial.write (lowByte(SX.returnSX2AdrLiDcc(i)));
           }
           for (uint8_t i = 0; i < 16; i++)       //Return complete SX2 Bus additions Adr/Light/DCC Bit SX Bus 0
           {
-            Serial.write (SXbus.returnSX2Fst(i));
+            Serial.write (SX.returnSX2Fst(i));
           }
           for (uint8_t i = 0; i < 16; i++)       //Return complete SX2 Bus additions Fst SX Bus 0
           {
-            Serial.write (lowByte(SXbus.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
+            Serial.write (lowByte(SX.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
           }
           for (uint8_t i = 0; i < 16; i++)       //Return complete SX2 Bus additions Fst SX Bus 0
           {
-            Serial.write (highByte(SXbus.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
+            Serial.write (highByte(SX.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
           }
           //Next Bus (SX1)
           for (uint8_t i = 16; i < 32; i++)       //Return complete SX2 Bus additions Format SX Bus 0
           {
-            Serial.write (SXbus.returnSX2Format(i));
+            Serial.write (SX.returnSX2Format(i));
           }
           for (uint8_t i = 16; i < 32; i++)       //Return complete SX2 Bus additions Adress SX Bus 0
           {
-            Serial.write (highByte(SXbus.returnSX2AdrLiDcc(i)));
+            Serial.write (highByte(SX.returnSX2AdrLiDcc(i)));
           }
           for (uint8_t i = 16; i < 32; i++)       //Return complete SX2 Bus additions Adress SX Bus 0
           {
-            Serial.write (lowByte(SXbus.returnSX2AdrLiDcc(i)));
+            Serial.write (lowByte(SX.returnSX2AdrLiDcc(i)));
           }
           for (uint8_t i = 16; i < 32; i++)       //Return complete SX2 Bus additions Adr/Light/DCC Bit SX Bus 0
           {
-            Serial.write (SXbus.returnSX2Fst(i));
+            Serial.write (SX.returnSX2Fst(i));
           }
           for (uint8_t i = 16; i < 32; i++)       //Return complete SX2 Bus additions Fst SX Bus 0
           {
-            Serial.write (lowByte(SXbus.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
+            Serial.write (lowByte(SX.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
           }
           for (uint8_t i = 16; i < 32; i++)       //Return complete SX2 Bus additions Fst SX Bus 0
           {
-            Serial.write (highByte(SXbus.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
+            Serial.write (highByte(SX.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
           }
           break;
         case (0xC3):
           for (uint8_t i = 0; i < 16; i++)       //Return complete SX2 Bus additions Format SX Bus 0
           {
-            Serial.write (SXbus.returnSX2Format(i));
+            Serial.write (SX.returnSX2Format(i));
           }
           for (uint8_t i = 0; i < 16; i++)       //Return complete SX2 Bus additions Adress SX Bus 0
           {
-            Serial.write (highByte(SXbus.returnSX2AdrLiDcc(i)));
+            Serial.write (highByte(SX.returnSX2AdrLiDcc(i)));
           }
           for (uint8_t i = 0; i < 16; i++)       //Return complete SX2 Bus additions Adress SX Bus 0
           {
-            Serial.write (lowByte(SXbus.returnSX2AdrLiDcc(i)));
+            Serial.write (lowByte(SX.returnSX2AdrLiDcc(i)));
           }
           for (uint8_t i = 0; i < 16; i++)       //Return complete SX2 Bus additions Adr/Light/DCC Bit SX Bus 0
           {
-            Serial.write (SXbus.returnSX2Fst(i));
+            Serial.write (SX.returnSX2Fst(i));
           }
           for (uint8_t i = 0; i < 16; i++)       //Return complete SX2 Bus additions Fst SX Bus 0
           {
-            Serial.write (lowByte(SXbus.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
+            Serial.write (lowByte(SX.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
           }
           for (uint8_t i = 0; i < 16; i++)       //Return complete SX2 Bus additions Fst SX Bus 0
           {
-            Serial.write (highByte(SXbus.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
+            Serial.write (highByte(SX.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
           }
           //Next Bus (SX1)
           for (uint8_t i = 16; i < 32; i++)       //Return complete SX2 Bus additions Format SX Bus 0
           {
-            Serial.write (SXbus.returnSX2Format(i));
+            Serial.write (SX.returnSX2Format(i));
           }
           for (uint8_t i = 16; i < 32; i++)       //Return complete SX2 Bus additions Adress SX Bus 0
           {
-            Serial.write (highByte(SXbus.returnSX2AdrLiDcc(i)));
+            Serial.write (highByte(SX.returnSX2AdrLiDcc(i)));
           }
           for (uint8_t i = 16; i < 32; i++)       //Return complete SX2 Bus additions Adress SX Bus 0
           {
-            Serial.write (lowByte(SXbus.returnSX2AdrLiDcc(i)));
+            Serial.write (lowByte(SX.returnSX2AdrLiDcc(i)));
           }
           for (uint8_t i = 16; i < 32; i++)       //Return complete SX2 Bus additions Adr/Light/DCC Bit SX Bus 0
           {
-            Serial.write (SXbus.returnSX2Fst(i));
+            Serial.write (SX.returnSX2Fst(i));
           }
           for (uint8_t i = 16; i < 32; i++)       //Return complete SX2 Bus additions Fst SX Bus 0
           {
-            Serial.write (lowByte(SXbus.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
+            Serial.write (lowByte(SX.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
           }
           for (uint8_t i = 16; i < 32; i++)       //Return complete SX2 Bus additions Fst SX Bus 0
           {
-            Serial.write (highByte(SXbus.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
+            Serial.write (highByte(SX.returnSX2Fkt(i))); //Return complete SX2 Bus additions Fst SX Bus 0
           }
           //Read Sx1 Busses
           for (uint8_t i = 0; i < 112; i++)       //Return complete SX0 BUS!
           {
-            Serial.write(SXbus.get(i));
+            Serial.write(SX.get(i));
           }
-          Serial.write(SXbus.getPWR());
+          Serial.write(SX.getPWR());
           for (uint8_t i = 0; i < 112; i++)       //Return complete SX1 BUS!
           {
-            Serial.write(SXbus.get(i | 128));
+            Serial.write(SX.get(i | 128));
           }
-          Serial.write(SXbus.getPWR());
+          Serial.write(SX.getPWR());
           break;
         default:
           break;
       }//End Switch rxBufer[BUFFSX2CMD]
+      break;
+    case (0x7A):
+      serialreturn = SX.regPOM(rxBuffer[0],rxBuffer[1], 2, rxBuffer[2], rxBuffer[3], rxBuffer[4]);
+      sx2loco[serialreturn] = 3;
+      Serial.write(serialreturn);
       break;
     case (0x81):                                         //Return Firmware Version
       Serial.write(0x61);
@@ -487,6 +523,36 @@ void serialEvent()
       Serial.write(FWVERSION1);
       Serial.write(0xE0);
       break;
+    case (0x83):
+      if (rxBuffer[0] == 0xA0 && rxBuffer[1] == 0x00 && rxBuffer[2] == 0x00 && rxBuffer[3] == 0x00)
+      {
+        SX.set(106, 0x32);
+        SX.set(105, 0x01);
+        SX.set(104, 0x01);
+        SX.set(106, 160);
+        delay(100);
+        SX.set(106, 0x00);
+        SX.set(105, 0x00);
+        SX.set(104, 0x00);
+        Serial.write(0x00);
+        Serial.write(0x00);
+        Serial.write(0x00);
+        break;
+      }
+      else
+      {
+        Serial.write(0xFF);
+        Serial.write(0xFF);
+        Serial.write(0xFF);
+        break;
+      }
+    case (0xFF):
+      while (Serial.available())
+      {
+        Serial.read();          //WRONG COMMAND RECIVED, CLEAR BUFFER
+        delayMicroseconds(600); //Wait a bit for next command
+      }
+      break;
     default:
       break;
   }//Ende switch
@@ -494,12 +560,12 @@ void serialEvent()
 void loop()
 {
   // put your main code here, to run repeatedly:
-  zeformat = SXbus.get(110) & 15;
+  zeformat = SX.get(110) & 15;
   for (uint8_t i = 0; i < SX2LOCOS; i++)       //loop for hold locos active on bus
   {
     if (sx2loco[i] != 0)           //CHeck if loco is active
     {
-      SXbus.holdLoco(i, sx2loco[i]);        //Hold Loco active
+      SX.holdLoco(i, sx2loco[i]);       //Hold Loco active
     }
   }
 }
