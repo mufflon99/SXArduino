@@ -1,9 +1,17 @@
 /*
  * SXArduino.h
+  *
+ * Changed on: 14.09.2018
+ * Version: 5.3
+ * Changes: Added some methods for SX1 reading and writing
  *
- * Changed on: 06.09.2018
+ * Changed on: 14.09.2018
+ * Version: 5.2
+ * Changes: Now support Arduino Due
+ *
+ * Changed on: 12.09.2018
  * Version: 5.1
- * Changes: Now support reading SX BUS 0 and SX BUS 1
+ * Changes: Now support reading SX BUS 0 and SX BUS 1, minor bug fixes
  * 
  * Version: 4.1 
  * Copyright: Michael Berger, main work done by Gerard van der Sel!
@@ -95,13 +103,13 @@
 	#define SX_T0_PINREG	PIND
 	#define SX_T0_DDR		DDRD
 	#ifndef _use4pin
-		#define SX0_T1			4                    	//SX0 Data read arduino port
-		#define SX0_T1_PORTPIN 	PIND4                  // SX0_T1
+		#define SX0_T1			0                    	//SX0 Data read arduino port
+		#define SX0_T1_PORTPIN 	PIND0                  // SX0_T1
 		#define SX0_T1_PINREG	PIND
 		#define SX0_T1_DDR		DDRD
 
-		#define SX0_D			7                     //SX0 Data write arduino port
-		#define SX0_D_PORTPIN	PORTD7			       // SX0_D
+		#define SX0_D			4                     //SX0 Data write arduino port
+		#define SX0_D_PORTPIN	PORTD4			       // SX0_D
 		#define SX0_D_PORT		PORTD
 		#define SX0_D_DDR		DDRD
 
@@ -124,7 +132,7 @@
 	
 		#define SX0_D_HIGH			7                      // SX0 Data high write arduino port
 		#define SX0_D_HIGH_PORTPIN 	PORTD7 			   // SX0_D_HIGH
-		#define SX0_D_HIGH_PORT	P	ORTD
+		#define SX0_D_HIGH_PORT		PORTD
 		#define SX0_D_HIGH_DDR		DDRD
 		
 		#define SX0_D_LOW		3                     // SX0 Data low write arduino port
@@ -213,6 +221,33 @@
 		#endif
 		
 	#endif                                        // _use4pin
+	
+#elif defined __SAM3X8E__						//Arduino Due
+	#define PINPORT_READING	PIOD
+	#define PINPORT_WRITNG PIOC
+	#define SX_T0			42                   // Clock
+
+		#define SX0_T1			30                    	//SX0 Data read arduino port
+		#define SX0_T1_PORTPIN 	PIO_PDSR_P9                 // SX0_T1
+
+		#define SX0_D_LOW			36                     // SX0 Data low write arduino port
+		#define SX0_D_LOW_PORTPIN 	4			       		// SX0_D_LOW
+
+		#define SX0_D_HIGH			34                      // SX0 Data high write arduino port
+		#define SX0_D_HIGH_PORTPIN 	2 			   // SX0_D_HIGH
+
+		#ifdef _sxbus1	
+			#define SX1_T1			32                  		// SX1 Data read arduino port
+			#define SX1_T1_PORTPIN 	PIO_PDSR_P10                  // SX1_T1
+
+			
+			#define SX1_D_LOW			40                   // SX1 Data low write arduino port
+			#define SX1_D_LOW_PORTPIN 	8			  // SX1_D_LOW
+
+				
+			#define SX1_D_HIGH			38                     // SX1 Data high write arduino port
+			#define SX1_D_HIGH_PORTPIN 	6			   // SX1_D_HIGH
+		#endif
 #else
   #error "--> CPU settings not supported in SX2Arduino.h <--"
 #endif
@@ -275,7 +310,10 @@ public:
 	uint8_t init(HardwareSerial* hwPrint);
 	uint8_t init(void);	
 	int get(uint8_t);
+	int get(uint8_t,uint8_t);
 	uint8_t set(uint8_t, uint8_t);
+	uint8_t setBit(uint8_t, uint8_t,uint8_t);
+	uint8_t setBitmask(uint8_t,uint8_t,uint8_t); 
 	uint8_t isSet(uint8_t);
 	uint8_t isSX2Set(uint8_t);
 	uint8_t setSX2Li(uint8_t , bool);
@@ -283,12 +321,14 @@ public:
 	uint8_t setSX2Speed(uint8_t , uint8_t, bool);
 	uint8_t setSX2Fkt(uint8_t , uint16_t);
     bool getPWR(void);
+	uint8_t getZEState();
 	void setPWR(bool);
 	void isr(void);
 	uint8_t inSync(void);
 	uint8_t inSX2Sync(void);
 	uint8_t checkSX2Frame (uint8_t);
 	uint8_t searchSX2EmptyFrame (void);
+	bool returnSX2POM(uint8_t);
 	uint8_t returnSX2Format(uint8_t);
 	uint16_t returnSX2AdrLiDcc(uint8_t);
 	uint16_t returnSX2Adr(uint8_t);
@@ -298,9 +338,15 @@ public:
 	uint8_t returnSX2Dir(uint8_t);
 	uint16_t returnSX2Fkt(uint8_t);
 	uint8_t regLoco (uint16_t , uint8_t );
+	#if defined(ARDUINO_ARCH_AVR)
 	uint8_t regLoco (uint16_t , uint8_t ,HardwareSerial* hwPrint);
+	#elif defined(ARDUINO_ARCH_SAM)
+	uint8_t regLoco (uint16_t, uint8_t,Serial_* hwPrint);
+	#endif
 	uint8_t checkLoco(uint16_t,uint8_t);
 	uint8_t holdLoco (uint8_t,uint8_t);
+	uint8_t holdLoco (uint8_t,uint8_t,uint16_t);
+	void 	isrholdLoco (uint8_t);
 	uint8_t regPOM(uint8_t,uint8_t,uint8_t,  uint8_t , uint8_t , uint8_t);
 	uint16_t calcSX2Adr(uint16_t);
 	uint16_t calcSX2Par(uint16_t); 		
