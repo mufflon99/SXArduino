@@ -1,0 +1,10 @@
+Interface uses the FCC Syntax. 
+Only Functions F1-F16 supported. (F17-F32 always Zero)
+Only working with Arduino Mega.
+Tested with Rocrail, other Software might not work!!
+
+For the arduino due:
+Native USB Port is used for Serial Communication.
+Attention to get this working:
+Dug up the method size_t Serial_::write(const uint8_t *buffer, size_t size) in the CDC.cpp (AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.11\cores\arduino\USB) and commented out the check for if (_usbLineInfo.lineState > 0).
+This is need to avoid waiting for the DTR Signal on native USB Port
