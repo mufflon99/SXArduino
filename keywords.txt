@@ -1,12 +1,14 @@
 # Datatypes (KEYWORD1)
 
-SX					KEYWORD1
+SX2Arduino			KEYWORD1
 
 # Methods and Functions (KEYWORD2)
 
 init				KEYWORD2
 get					KEYWORD2
 set					KEYWORD2
+setBitmask			KEYWORD2
+setBit			KEYWORD2
 isSet				KEYWORD2
 isSX2Set			KEYWORD2
 setSX2Li			KEYWORD2
@@ -18,6 +20,7 @@ setPWR				KEYWORD2
 isr					KEYWORD2
 inSync				KEYWORD2
 inSX2Sync			KEYWORD2
+returnSX2POM		KEYWORD2
 returnSX2Format		KEYWORD2
 returnSX2AdrLiDcc	KEYWORD2
 returnSX2Adr		KEYWORD2
@@ -29,9 +32,10 @@ returnSX2Fkt		KEYWORD2
 regLoco				KEYWORD2
 checkLoco			KEYWORD2
 holdLoco			KEYWORD2
+isrholdLoco			KEYWORD2
 regPOM				KEYWORD2
-calcAdr				KEYWORD2
-calcPar				KEYWORD2
+calcSX2Adr			KEYWORD2
+calcSX2Par			KEYWORD2
 
 
 
