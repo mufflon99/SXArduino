@@ -1,2 +1,2 @@
 
-Für das Servo Modul wird die Einspeise Platine SX Verteiler benötigt.
+Für denen Nano Servo Decoder wird die Einspeise Platine SX Verteiler benötigt.
